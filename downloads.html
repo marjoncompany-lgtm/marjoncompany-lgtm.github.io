@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#07111c" />
+  <title>Android install · De Rueda Construction</title>
+  <meta name="description" content="De Rueda Construction, Mariveles, Bataan. Public site, field record book, and Android install." />
+  <link rel="icon" href="favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<header class="bar">
+  <div class="wrap">
+    <div class="bar-row">
+      <a class="brand" href="index.html" aria-label="De Rueda Construction">
+        <img class="logo" src="brand/logo.webp" alt="De Rueda Construction" />
+      </a>
+      <nav class="desk">
+        <a href="index.html">Home</a>
+        <a href="about.html">About</a>
+        <a href="services.html">Services</a>
+        <a href="projects.html">Projects</a>
+        <a href="contact.html">Contact</a>
+        <a href="downloads.html">Downloads</a>
+      </nav>
+      <a class="btn gloss" href="field/index.html">Field book</a>
+    </div>
+    <nav class="mobile">
+      <a href="index.html">Home</a>
+      <a href="about.html">About</a>
+      <a href="services.html">Services</a>
+      <a href="projects.html">Projects</a>
+      <a href="contact.html">Contact</a>
+      <a href="downloads.html">Downloads</a>
+      <a href="field/index.html">Field book</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap page">
+  <p class="kicker">Android 1.2.0</p>
+  <h1>Install the field app</h1>
+  <p class="muted">Version 1.2.0 is the only public release. Current phones get the 64-bit package. Older ARM phones get the 32-bit package. Opening the file always asks Android for permission to install. Allow that, and the install finishes without searching your downloads. The app does not send salary.</p>
+  <p style="margin-top:22px"><a id="get" class="btn gloss" href="downloads/DeRueda-arm64-v8a.apk" download="DeRueda-arm64-v8a.apk">Download 64-bit De Rueda</a></p>
+  <p id="asked" class="note" hidden>Android is asking permission to install this app. Allow installs from this browser. If the phone opened Settings, turn the switch on and come back. This page opens the installer again, and De Rueda installs once you confirm the name.</p>
+  <p id="continuing" class="note" hidden>Permission is saved. The installer should be open now. Confirm De Rueda, tap Install, and Android finishes the rest.</p>
+  <ol class="steps">
+    <li>Tap Download De Rueda. If the phone asks whether the file is safe, allow the download.</li>
+    <li>Open the file. Android asks permission to install from this browser. Allow it.</li>
+    <li>Come back here if Settings opened. The installer starts on its own. Tap Install once.</li>
+  </ol>
+  <p id="desk" class="muted" hidden>This file installs on an Android phone. On a computer, send the download to the phone and open it there.</p>
+  <p class="sha">Release-signed. Certificate SHA-256 f70c0b6ace6349f9e3a091dfa236a49837a7a3235c58ed7a5d6a01ad2beffed4. This is a sideload key, not a Play Store upload key.</p>
+  <div class="panel" style="margin-top:18px">
+    <strong style="color:#1c3d32">arm64-v8a</strong>
+    <p class="muted">Current Android phones. Version 1.2.0 · 2026-11-05 · 98.3 KB</p>
+    <p class="sha">SHA-256 fd819768ed9e412bb56eff24cb171a8304feb5085e7b67a7e24d8912c38f3f4f</p>
+  </div>
+  <div class="panel" style="margin-top:12px">
+    <strong style="color:#1c3d32">armeabi-v7a</strong>
+    <p class="muted">Older 32-bit ARM phones. Same version and certificate. 96.8 KB</p>
+    <p class="sha">SHA-256 9e76704381dea040206ebb232446490da6d91a49839385c72c4b700e2bef2f23</p>
+    <p><a id="alt" class="btn gloss" href="downloads/DeRueda-armeabi-v7a.apk" download="DeRueda-armeabi-v7a.apk">Download 32-bit instead</a></p>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <p>De Rueda Construction. Mariveles, Bataan. The staff system keeps records. It does not send money.</p>
+    <p>Public listing: #7 Doña Adela Heights, Brgy. Mt. View, Mariveles, Bataan 2105. Confirm the address with the company before a visit.</p>
+    <p>A public Facebook page is listed as De Rueda Builders & Construction Services. No phone number is published here until the company confirms one.</p>
+  </div>
+</footer>
+
+<script>
+const KEY = "drc-apk-permit";
+let HREF = "downloads/DeRueda-arm64-v8a.apk";
+let NAME = "DeRueda-arm64-v8a.apk";
+const android = /Android/i.test(navigator.userAgent);
+if (/armeabi-v7a|armv7/i.test(navigator.userAgent)) {
+  HREF = "downloads/DeRueda-armeabi-v7a.apk";
+  NAME = "DeRueda-armeabi-v7a.apk";
+  const button = document.getElementById("get");
+  button.href = HREF;
+  button.setAttribute("download", NAME);
+  button.textContent = "Download 32-bit De Rueda";
+}
+if (!android) document.getElementById("desk").hidden = false;
+function read() {
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem(KEY) || "null");
+    if (!parsed || (parsed.pass !== 1 && parsed.pass !== 2)) return null;
+    if (Date.now() - parsed.at > 15 * 60 * 1000) { sessionStorage.removeItem(KEY); return null; }
+    return parsed;
+  } catch (e) { return null; }
+}
+function write(permit) {
+  if (!permit) sessionStorage.removeItem(KEY);
+  else sessionStorage.setItem(KEY, JSON.stringify(permit));
+}
+function show(phase) {
+  document.getElementById("asked").hidden = phase !== "asked";
+  document.getElementById("continuing").hidden = phase !== "continuing";
+}
+function resume(permit) {
+  const href = permit.href || HREF;
+  write({ href, pass: 2, at: Date.now() });
+  show("continuing");
+  location.assign(href);
+}
+const saved = read();
+if (saved && saved.pass === 1) show("asked");
+if (saved && saved.pass === 2) show("continuing");
+if (android && saved && saved.pass === 1 && saved.at < performance.timeOrigin - 500) resume(saved);
+let left = false;
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") { if (read() && read().pass === 1) left = true; return; }
+  if (!left || !android) return;
+  left = false;
+  const current = read();
+  if (current && current.pass === 1) resume(current);
+});
+document.getElementById("get").addEventListener("click", (event) => {
+  if (!android) return;
+  event.preventDefault();
+  write({ href: HREF, pass: 1, at: Date.now() });
+  show("asked");
+  const link = document.createElement("a");
+  link.href = HREF;
+  link.download = NAME;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+});
+</script>
+
+</body></html>

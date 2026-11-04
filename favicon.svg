@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="De Rueda Construction">
+  <rect width="32" height="32" rx="6" fill="#1C3D32"/>
+  <path fill="#F4EFE4" d="M6.5 15.2 16 6.2l9.5 9v11.2h-19z"/>
+  <path fill="#A6843D" d="M16 6.2 25.5 15.2h-3.1L16 9.2l-6.4 6H6.5z"/>
+  <rect x="14.2" y="19.2" width="3.6" height="7.2" fill="#1C3D32"/>
+</svg>

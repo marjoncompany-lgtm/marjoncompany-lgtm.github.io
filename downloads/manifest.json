@@ -1,0 +1,20 @@
+{
+  "version": "1.2.0",
+  "released": "2026-11-05",
+  "files": [
+    {
+      "abi": "arm64-v8a",
+      "name": "DeRueda-arm64-v8a.apk",
+      "bytes": 98272,
+      "note": "Current Android phones. Opening the file asks permission to install. Allow it and De Rueda installs.",
+      "sha256": "fd819768ed9e412bb56eff24cb171a8304feb5085e7b67a7e24d8912c38f3f4f"
+    },
+    {
+      "abi": "armeabi-v7a",
+      "name": "DeRueda-armeabi-v7a.apk",
+      "bytes": 96795,
+      "note": "Older 32-bit ARM phones. Same version, same certificate. It also asks permission before it installs.",
+      "sha256": "9e76704381dea040206ebb232446490da6d91a49839385c72c4b700e2bef2f23"
+    }
+  ]
+}

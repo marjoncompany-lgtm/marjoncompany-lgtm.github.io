@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>De Rueda</title>
+  <style>
+    :root { color-scheme: light; --ink:#14241c; --forest:#1c3d32; --brass:#a6843d; --paper:#fbf8f2; --cream:#f3eee4; --line:#d5cbbd; --muted:#5c6b62; --danger:#8d3b32; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Georgia, "Times New Roman", serif; background: var(--paper); color: var(--ink); }
+    header, main, nav { padding: 16px; }
+    header { background: var(--forest); color: var(--cream); }
+    h1 { font-size: 1.7rem; margin: 0; }
+    p, label { font-family: "Segoe UI", sans-serif; }
+    button, input, select { font: inherit; min-height: 44px; }
+    button { background: var(--forest); color: var(--cream); border: 0; border-radius: 8px; padding: 0 14px; }
+    button.alt { background: transparent; color: var(--forest); border: 1px solid var(--line); }
+    input, select, textarea { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: white; }
+    nav { position: sticky; bottom: 0; display: flex; gap: 6px; background: var(--cream); border-top: 1px solid var(--line); }
+    nav button { flex: 1; background: transparent; color: var(--forest); padding: 8px 0; }
+    .card { background: var(--cream); border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin: 10px 0; }
+    .muted { color: var(--muted); font-size: 0.92rem; }
+    .err { color: var(--danger); }
+    .row { display: flex; gap: 8px; margin: 8px 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <p class="muted" style="color:#d4b36a;margin:0">De Rueda Construction</p>
+    <h1 id="title">Field record book</h1>
+    <p id="who" class="muted" style="color:#e7dfd0"></p>
+  </header>
+  <main id="app"></main>
+  <nav id="nav" hidden></nav>
+  <script>
+    const KEY = "drc-field-v1";
+    const empty = () => ({ owner: null, sites: [], people: [], attendance: [], deductions: [] });
+    let db = load();
+    let session = false;
+    let tab = "home";
+
+    function load() {
+      try { return JSON.parse(localStorage.getItem(KEY)) || empty(); } catch (e) { return empty(); }
+    }
+    function save() { localStorage.setItem(KEY, JSON.stringify(db)); }
+    function pesos(c) { return "PHP " + (c / 100).toFixed(2); }
+    function id() {
+      const a = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      let s = "DRC-";
+      const b = crypto.getRandomValues(new Uint8Array(6));
+      for (const n of b) s += a[n % a.length];
+      return s;
+    }
+    async function hash(password, salt) {
+      const data = new TextEncoder().encode(salt + ":" + password);
+      const buf = await crypto.subtle.digest("SHA-256", data);
+      return [...new Uint8Array(buf)].map((x) => x.toString(16).padStart(2, "0")).join("");
+    }
+    function monday(iso) {
+      const [y, m, d] = iso.split("-").map(Number);
+      const dt = new Date(Date.UTC(y, m - 1, d));
+      const day = dt.getUTCDay();
+      dt.setUTCDate(dt.getUTCDate() + (day === 0 ? -6 : 1 - day));
+      return dt.toISOString().slice(0, 10);
+    }
+    function today() {
+      return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    }
+    function stamp() { return new Date().toISOString(); }
+    function el(html) { app.innerHTML = html; bind(); }
+    const app = document.getElementById("app");
+
+    function render() {
+      document.getElementById("nav").hidden = !session;
+      if (!db.owner) return setup();
+      if (!session) return unlock();
+      document.getElementById("who").textContent = db.owner.name + " · " + db.owner.companyId;
+      document.getElementById("nav").innerHTML = ["home","people","sites","attendance","payroll","backup"].map((t) => `<button data-tab="${t}">${t}</button>`).join("");
+      if (tab === "home") home();
+      if (tab === "people") people();
+      if (tab === "sites") sites();
+      if (tab === "attendance") attendance();
+      if (tab === "payroll") payroll();
+      if (tab === "backup") backup();
+    }
+    function bind() {
+      document.querySelectorAll("[data-tab]").forEach((b) => b.onclick = () => { tab = b.dataset.tab; render(); });
+      document.querySelectorAll("form[data-action]").forEach((f) => f.onsubmit = (e) => { e.preventDefault(); actions[f.dataset.action](new FormData(f), e.submitter); });
+    }
+
+    function setup() {
+      document.getElementById("title").textContent = "Open the device book";
+      el(`<p class="muted">This phone keeps a field copy. It does not send money and it does not replace the staff site. The first name you enter is the device owner.</p>
+        <form data-action="setup" class="card">
+          <label>Owner name<input name="name" required></label>
+          <label>Password<input name="password" type="password" minlength="8" required></label>
+          <div class="row"><button>Create owner record</button></div>
+          <p class="err" id="err"></p>
+        </form>`);
+    }
+    function unlock() {
+      document.getElementById("title").textContent = "Locked";
+      el(`<form data-action="unlock" class="card"><label>Password<input name="password" type="password" required></label><div class="row"><button>Open</button></div><p class="err" id="err"></p></form>`);
+    }
+    function home() {
+      const last = db.attendance.filter((a) => a.companyId === db.owner.companyId).at(-1);
+      el(`<div class="card"><p class="muted">Today ${today()}</p><p>${last ? last.action.toUpperCase() + " · " + last.occurredAt : "No attendance yet"}</p><p class="muted">${db.people.length} people · ${db.sites.length} sites</p></div>
+        <p class="muted">Shared company records stay on the staff website. Use Backup when you want the CEO to import this phone's file.</p>`);
+    }
+    function sites() {
+      el(`<form data-action="site" class="card"><label>Site name<input name="name" required></label><label>Type<select name="kind"><option value="project">Project site</option><option value="office">Office-based</option></select></label><button>Create site</button></form>
+        ${db.sites.map((s) => `<div class="card"><strong>${s.name}</strong><p class="muted">${s.kind} · ${s.status} · ${s.id}</p></div>`).join("") || `<p class="muted">No sites yet.</p>`}`);
+    }
+    function people() {
+      const options = db.sites.filter((s) => s.status === "active").map((s) => `<option value="${s.id}">${s.name}</option>`).join("");
+      el(`<form data-action="person" class="card"><label>Name<input name="name" required></label><label>Job<input name="job" required></label><label>Site<select name="site">${options}</select></label><label>Class<select name="pay"><option value="daily">Daily</option><option value="hourly">Hourly</option></select></label><label>Rate, pesos<input name="rate" type="number" min="0" step="0.01"></label><button>Register</button><p class="err" id="err"></p></form>
+        ${db.people.map((p) => `<div class="card"><strong>${p.fullName}</strong><p class="muted">${p.companyId} · ${p.role} · ${p.payClass} ${pesos(p.payClass === "hourly" ? p.hourlyRateCentavos : p.dailyRateCentavos)}</p></div>`).join("")}`);
+    }
+    function attendance() {
+      const people = db.people.map((p) => `<option value="${p.companyId}">${p.fullName} · ${p.companyId}</option>`).join("");
+      const sites = db.sites.filter((s) => s.status === "active").map((s) => `<option value="${s.id}">${s.name}</option>`).join("");
+      const rows = db.attendance.slice().reverse().slice(0, 20).map((a) => `<div class="card">${a.companyId} · ${a.action} · ${a.occurredAt}</div>`).join("");
+      el(`<form data-action="attend" class="card"><label>Person<select name="companyId">${people}</select></label><label>Site<select name="siteId">${sites}</select></label><div class="row"><button name="action" value="in">Check in</button><button class="alt" name="action" value="out">Check out</button></div><p class="err" id="err"></p></form>${rows || `<p class="muted">No events yet.</p>`}`);
+    }
+    function payroll() {
+      el(`<form data-action="pay" class="card"><label>Any day in the week<input name="day" type="date" required></label><label><input name="ot" type="checkbox"> Include reviewed overtime</label><button>Prepare week</button><p class="muted">Draft rules: daily rate for a completed day, overtime after 8 hours at 125% only if you include it. Deductions are not guessed. This does not move money.</p><p class="err" id="err"></p></form>
+        ${(db.payroll || []).map((r) => `<div class="card">${r.companyId} · ${r.week} · net ${pesos(r.net)}</div>`).join("")}`);
+    }
+    function backup() {
+      el(`<div class="card"><p class="muted">CEO can import this file on the staff site. Rates are included because this is the owner's device copy.</p><button data-action="export" type="button">Download backup</button></div>`);
+      const b = document.querySelector("[data-action=export]");
+      if (b) b.onclick = () => {
+        const file = { format: "drc-backup-1", exportedAt: new Date().toISOString(), sites: db.sites, people: db.people.map(({ companyId, fullName, role, status, siteId, jobTitle, payClass, dailyRateCentavos, hourlyRateCentavos }) => ({ companyId, fullName, role, status, siteId, jobTitle, payClass, dailyRateCentavos, hourlyRateCentavos })), attendance: db.attendance };
+        const blob = new Blob([JSON.stringify(file, null, 2)], { type: "application/json" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "de-rueda-field-backup.json";
+        a.click();
+      };
+    }
+
+    const actions = {
+      async setup(form) {
+        const salt = [...crypto.getRandomValues(new Uint8Array(16))].map((x) => x.toString(16).padStart(2, "0")).join("");
+        const password = await hash(form.get("password"), salt);
+        const companyId = id();
+        db.owner = { name: form.get("name"), companyId, salt, password };
+        db.people.push({ companyId, fullName: form.get("name"), role: "ceo", status: "active", siteId: null, jobTitle: "Chief Executive Officer", payClass: "daily", dailyRateCentavos: 0, hourlyRateCentavos: 0 });
+        save(); session = true; render();
+      },
+      async unlock(form) {
+        const got = await hash(form.get("password"), db.owner.salt);
+        if (got !== db.owner.password) { document.getElementById("err").textContent = "That password does not match."; return; }
+        session = true; render();
+      },
+      site(form) {
+        db.sites.push({ id: "SITE-" + id().slice(4), name: form.get("name"), kind: form.get("kind"), status: "active" });
+        save(); render();
+      },
+      person(form) {
+        if (!db.sites.length) { document.getElementById("err").textContent = "Create a site first."; return; }
+        const rate = Math.round(Number(form.get("rate") || 0) * 100);
+        const payClass = form.get("pay");
+        db.people.push({ companyId: id(), fullName: form.get("name"), role: "employee", status: "active", siteId: form.get("site"), jobTitle: form.get("job"), payClass, dailyRateCentavos: payClass === "daily" ? rate : 0, hourlyRateCentavos: payClass === "hourly" ? rate : 0 });
+        save(); render();
+      },
+      attend(form, button) {
+        const action = button && button.value === "out" ? "out" : "in";
+        const companyId = form.get("companyId");
+        const last = [...db.attendance].reverse().find((a) => a.companyId === companyId);
+        if (last && last.action === action) { document.getElementById("err").textContent = action === "in" ? "Already checked in." : "Already checked out."; return; }
+        if (action === "out" && (!last || last.action !== "in")) { document.getElementById("err").textContent = "Check in first."; return; }
+        db.attendance.push({ id: crypto.randomUUID(), companyId, siteId: form.get("siteId"), action, occurredAt: stamp(), method: "manual" });
+        save(); render();
+      },
+      pay(form) {
+        const week = monday(form.get("day") || today());
+        const includeOt = form.get("ot") === "on";
+        db.payroll = db.payroll || [];
+        for (const person of db.people) {
+          const events = db.attendance.filter((a) => a.companyId === person.companyId && a.occurredAt.slice(0, 10) >= week);
+          if (!events.length) continue;
+          const daily = person.payClass === "daily" ? person.dailyRateCentavos : 0;
+          const hours = Math.min(8, events.filter((e) => e.action === "in").length * 8);
+          const regular = person.payClass === "hourly" ? hours * person.hourlyRateCentavos : daily * events.filter((e) => e.action === "in").length;
+          const net = regular;
+          db.payroll.push({ companyId: person.companyId, week, net, note: includeOt ? "Overtime review included as zero until an out time is paired." : "Overtime not included." });
+        }
+        save(); render();
+      }
+    };
+    render();
+  </script>
+</body>
+</html>
